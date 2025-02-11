@@ -17,3 +17,39 @@
    ```bash
    https://github.com/kurumicute/gptweb.git
    cd chatgpt-clone
+2.建立虛擬環境並安裝依賴
+
+```
+   python -m venv venv
+   source venv/bin/activate   # Windows 請使用 venv\Scripts\activate
+   pip install -r requirements.txt
+```
+3.設定資料庫
+
+請建立一個名為 chat_db 的 MySQL 資料庫。
+建立 users 與 chat 表，範例如下：
+```
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE chat (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    user_message TEXT,
+    image_url VARCHAR(255),
+    bot_reply TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+4.設定 API 金鑰與其他參數
+
+修改 app.py 中的 OpenAI API 金鑰設定（建議使用環境變數）。
+修改資料庫連線參數 DB_CONFIG。
+
+5.啟動伺服器
+python app.py
+
+6.前往 http://localhost:8080 即可使用此應用程式。
