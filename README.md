@@ -1,4 +1,4 @@
-# ChatGPT Clone
+# ChatGPT web
 
 這是一個仿 ChatGPT 的網站專案，使用 Flask 作為後端、MySQL 作為資料庫，並整合 OpenAI API、TTS、圖片上傳及簡繁轉換等功能。
 
