@@ -15,5 +15,5 @@
 1. **Clone repository**
 
    ```bash
-   git clone https://github.com/你的帳號/chatgpt-clone.git
+   https://github.com/kurumicute/gptweb.git
    cd chatgpt-clone
