@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GGPT</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 Poppins 與 Noto Sans SC 字型 -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    pre, code {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-width: 100%;
+      overflow-x: auto;
+      font-family: 'Noto Sans SC', 'Poppins', sans-serif !important;
+    }
+    body {
+      background-color: #343541;
+      font-family: 'Noto Sans SC', 'Poppins', sans-serif; 
+    }
+    .chat-header {
+      background-color: #202123;
+      border-bottom: 1px solid #444;
+      padding: 1rem;
+      text-align: center;
+      color: #fff;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    .chat-text {
+      font-size: 16px;
+    }
+    .chat-container {
+      background-color: #40414F;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      padding: 1rem;
+    }
+    .message-user {
+      background-color: #444654;
+      color: #fff;
+      padding: 0.75rem;
+      border-radius: 8px;
+      max-width: 70%;
+      margin-left: auto;
+      word-break: break-word;
+    }
+    .message-bot {
+      background-color: #343541;
+      color: #fff;
+      padding: 0.75rem;
+      border-radius: 8px;
+      max-width: 70%;
+      margin-right: auto;
+      word-break: break-word;
+    }
+    .input-area {
+      background-color: #40414F;
+      border-top: 1px solid #444;
+      padding: 0.75rem;
+      margin-top: 1rem;
+    }
+    .input-field {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background-color: #202123;
+      color: #fff;
+      resize: none;
+      overflow-y: hidden;
+      max-height: 150px;
+    }
+    .send-button {
+      background-color: #10a37f;
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+    }
+    .upload-btn {
+      background: linear-gradient(135deg, #6B7280, #374151);
+      color: #fff;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      transition: background 0.3s ease;
+    }
+    .upload-btn:hover {
+      background: linear-gradient(135deg, #4B5563, #1F2937);
+    }
+    #imageInput {
+      display: none;
+    }
+    #chat-box {
+      overflow-anchor: none;
+      background: rgba(0,0,0,0.15);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <header class="chat-header">GGPT</header>
+  <main class="flex-grow container mx-auto p-4">
+    <!-- 使用者資訊 -->
+    <div id="user-banner" class="bg-indigo-600 text-white p-4 rounded shadow mb-4" style="display: none;">
+      歡迎，<span id="logged-in-user"></span>
+      <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded ml-4">登出</button>
+    </div>
+    
+    <!-- 登入/註冊表單 -->
+    <div id="auth-section" class="bg-white p-6 rounded shadow max-w-sm mx-auto" style="display: none;">
+      <input type="text" id="username" placeholder="帳號" class="w-full p-2 border border-gray-300 rounded mb-2">
+      <input type="password" id="password" placeholder="密碼" class="w-full p-2 border border-gray-300 rounded mb-4">
+      <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded mb-2">登入</button>
+      <button onclick="register()" class="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 rounded">註冊</button>
+    </div>
+    
+    <!-- 聊天介面 -->
+    <div id="chat-container" class="chat-container mx-auto flex flex-col max-w-3xl" style="display: none;">
+      <div id="chat-box" class="flex-grow p-4 overflow-y-auto" style="max-height: 70vh;"></div>
+      <div class="input-area flex items-center space-x-2">
+        <button id="upload-btn" class="upload-btn" title="上傳圖片"><span class="text-xl">+</span></button>
+        <textarea id="message" placeholder="輸入你的訊息" class="input-field flex-grow" rows="1"></textarea>
+        <button onclick="sendMessage()" class="send-button hover:bg-green-500">發送</button>
+        <input type="file" id="imageInput" accept="image/*">
+      </div>
+    </div>
+    
+    <!-- 清除聊天記錄按鈕 -->
+    <div id="clear-history-container" class="flex justify-end mt-4" style="display: none;">
+      <button onclick="clearChatHistory()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">清除聊天紀錄</button>
+    </div>
+  </main>
+  
+  <script>
+    // 轉義 HTML 字元
+    function escapeHTML(str) {
+      return str.replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+    }
+    
+    // 自動調整輸入框高度
+    const messageField = document.getElementById('message');
+    const MAX_HEIGHT = 150;
+    messageField.addEventListener('input', function() {
+      this.style.height = 'auto';
+      if (this.scrollHeight > MAX_HEIGHT) {
+        this.style.height = MAX_HEIGHT + 'px';
+        this.style.overflowY = 'auto';
+      } else {
+        this.style.height = this.scrollHeight + 'px';
+        this.style.overflowY = 'hidden';
+      }
+    });
+    
+    // 支援 Tab 鍵
+    messageField.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + "\t" + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 1;
+      }
+    });
+    
+    // 點擊上傳圖片按鈕
+    document.getElementById('upload-btn').addEventListener('click', function() {
+      document.getElementById('imageInput').click();
+    });
+    
+    // 記錄目前上傳的圖片 URL，待發送訊息時附上
+    let currentImageURL = null;
+    document.getElementById('imageInput').addEventListener('change', uploadImage);
+    
+    function checkSession() {
+      fetch('/check_session')
+        .then(response => response.json())
+        .then(data => {
+          if (data.logged_in) {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('user-banner').style.display = 'block';
+            document.getElementById('chat-container').style.display = 'flex';
+            document.getElementById('clear-history-container').style.display = 'flex';
+            document.getElementById('logged-in-user').textContent = data.username;
+            loadHistory();
+          } else {
+            document.getElementById('auth-section').style.display = 'block';
+          }
+        });
+    }
+    
+    function login() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          checkSession();
+        } else {
+          alert(data.error || '登录失败');
+        }
+      });
+    }
+    
+    function register() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('註冊成功，請登入！');
+        } else {
+          alert(data.error || '註冊失敗');
+        }
+      });
+    }
+    
+    function logout() {
+      fetch('/logout')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        }
+      });
+    }
+    
+    // 發送文字訊息（若有上傳圖片，會一併傳送 image_url）
+    function sendMessage() {
+      if (document.getElementById('user-banner').style.display !== 'block') {
+        alert('請先登入！');
+        return;
+      }
+      const rawMessage = document.getElementById("message").value;
+      const message = escapeHTML(rawMessage);
+      const chatBox = document.getElementById("chat-box");
+      chatBox.innerHTML += `<div class="mb-4 flex justify-end">
+        <div class="message-user">
+          <pre class="whitespace-pre-wrap"><code>${message}</code></pre>
+        </div>
+      </div>`;
+      document.getElementById("message").value = "";
+      document.getElementById("message").style.height = 'auto';
+      chatBox.scrollTop = chatBox.scrollHeight;
+      let payload = { message: rawMessage };
+      if (currentImageURL) {
+        payload.image_url = currentImageURL;
+        currentImageURL = null; // 傳送後重置
+      }
+      fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        let reply = data.reply || data.error;
+        if (reply.includes("```")) {
+          reply = reply.replace(/```(\w+)?/g, "").trim();
+        }
+        reply = escapeHTML(reply);
+        chatBox.innerHTML += `<div class="mb-4 flex justify-start">
+          <div class="message-bot">
+            <pre class="whitespace-pre-wrap"><code>${reply}</code></pre>
+          </div>
+        </div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+    }
+    
+    // 上傳圖片，並將返回的圖片 URL 存入 currentImageURL
+    function uploadImage() {
+      const fileInput = document.getElementById("imageInput");
+      if (fileInput.files.length === 0) {
+        alert("請選擇一張圖片");
+        return;
+      }
+      const formData = new FormData();
+      formData.append("image", fileInput.files[0]);
+      fetch("/upload_image", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          currentImageURL = data.image_url;
+          const chatBox = document.getElementById("chat-box");
+          chatBox.innerHTML += `<div class="mb-4 flex justify-end">
+              <div class="message-user">
+                <img src="${data.image_url}" class="max-w-xs rounded shadow" alt="Uploaded Image">
+              </div>
+            </div>`;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        } else {
+          alert("圖片上傳失敗: " + data.error);
+        }
+      });
+    }
+    
+    function clearChatHistory() {
+      if (!confirm("確定要清除聊天記錄嗎？")) return;
+      fetch('/clear_history', { method: 'POST' })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById("chat-box").innerHTML = "";
+        }
+      });
+    }
+    
+    function loadHistory() {
+      fetch('/history')
+      .then(response => response.json())
+      .then(data => {
+        const chatBox = document.getElementById("chat-box");
+        data.forEach(item => {
+          if(item.image_url) {
+            chatBox.innerHTML += `<div class="mb-4 flex justify-end">
+              <div class="message-user">
+                <img src="${item.image_url}" class="max-w-xs rounded shadow" alt="Uploaded Image">
+              </div>
+            </div>`;
+          }
+          chatBox.innerHTML += `<div class="mb-4 flex justify-end">
+            <div class="message-user">
+              <pre class="whitespace-pre-wrap"><code>${escapeHTML(item.user_message.replace(/```/g, ''))}</code></pre>
+            </div>
+          </div>`;
+          chatBox.innerHTML += `<div class="mb-4 flex justify-start">
+            <div class="message-bot">
+              <pre class="whitespace-pre-wrap"><code>${escapeHTML(item.bot_reply.replace(/```/g, ''))}</code></pre>
+            </div>
+          </div>`;
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+    }
+    
+    document.addEventListener("DOMContentLoaded", checkSession);
+  </script>
+</body>
+</html>
